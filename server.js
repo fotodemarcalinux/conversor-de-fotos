@@ -6,36 +6,27 @@ const path = require('path');
 const archiver = require('archiver');
 
 const app = express();
-const upload = multer({ dest: 'uploads/' });
+const upload = multer({ storage: multer.memoryStorage() });
 
 app.use(express.static('public'));
 
 app.post('/upload', upload.array('images', 10), async (req, res) => {
     console.log('Arquivos recebidos:', req.files);
-    const promises = req.files.map(async (file) => {
-        const { filename } = file;
-        const outputFilename = `${filename}.jpeg`;
-        const outputFilePath = path.resolve(file.destination, 'resized', outputFilename);
-        try {
-            await sharp(file.path)
+    try {
+        const outputFilenames = await Promise.all(req.files.map(async (file) => {
+            const outputFilename = `${file.originalname.split('.')[0]}-resized.jpeg`;
+            const outputFilePath = path.resolve('uploads/resized', outputFilename);
+
+            await sharp(file.buffer)
                 .resize(1984, 1100)
                 .jpeg({ quality: 90 })
                 .toFile(outputFilePath);
-            fs.unlink(file.path, (err) => {
-                if (err) {
-                    console.error('Falha ao excluir o arquivo:', err);
-                }
-            });
-            return outputFilename;
-        } catch (error) {
-            console.error('Erro ao processar a imagem:', error);
-            throw error;
-        }
-    });
 
-    try {
-        const outputFilenames = await Promise.all(promises);
+            return outputFilename;
+        }));
+
         console.log('Imagens convertidas:', outputFilenames);
+
         const zipFileName = `converted-images-${Date.now()}.zip`;
         const zipFilePath = path.resolve('uploads', zipFileName);
         const output = fs.createWriteStream(zipFilePath);
