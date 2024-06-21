@@ -11,7 +11,6 @@ const upload = multer({ storage: multer.memoryStorage() });
 app.use(express.static('public'));
 
 app.post('/upload', upload.array('images', 10), async (req, res) => {
-    console.log('Arquivos recebidos:', req.files);
     try {
         const outputFilenames = await Promise.all(req.files.map(async (file) => {
             const outputFilename = `${file.originalname.split('.')[0]}-resized.jpeg`;
@@ -22,10 +21,8 @@ app.post('/upload', upload.array('images', 10), async (req, res) => {
                 .jpeg({ quality: 90 })
                 .toFile(outputFilePath);
 
-            return outputFilename;
+            return outputFilePath;
         }));
-
-        console.log('Imagens convertidas:', outputFilenames);
 
         const zipFileName = `converted-images-${Date.now()}.zip`;
         const zipFilePath = path.resolve('uploads', zipFileName);
@@ -37,7 +34,7 @@ app.post('/upload', upload.array('images', 10), async (req, res) => {
                 if (err) {
                     console.error('Erro ao enviar o arquivo:', err);
                 }
-                fs.unlinkSync(zipFilePath); // Excluir o arquivo ZIP após o download
+                fs.unlinkSync(zipFilePath);
             });
         });
 
@@ -47,9 +44,8 @@ app.post('/upload', upload.array('images', 10), async (req, res) => {
         });
 
         archive.pipe(output);
-        outputFilenames.forEach((filename) => {
-            const filePath = path.resolve('uploads/resized', filename);
-            archive.file(filePath, { name: filename });
+        outputFilenames.forEach((filePath) => {
+            archive.file(filePath, { name: path.basename(filePath) });
         });
         await archive.finalize();
     } catch (error) {
