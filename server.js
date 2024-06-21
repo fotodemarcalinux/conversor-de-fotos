@@ -11,6 +11,7 @@ const upload = multer({ dest: 'uploads/' });
 app.use(express.static('public'));
 
 app.post('/upload', upload.array('images', 10), async (req, res) => {
+    console.log('Arquivos recebidos:', req.files);
     const promises = req.files.map(async (file) => {
         const { filename } = file;
         const outputFilename = `${filename}.jpeg`;
@@ -28,11 +29,13 @@ app.post('/upload', upload.array('images', 10), async (req, res) => {
             return outputFilename;
         } catch (error) {
             console.error('Erro ao processar a imagem:', error);
+            throw error;
         }
     });
 
     try {
         const outputFilenames = await Promise.all(promises);
+        console.log('Imagens convertidas:', outputFilenames);
         const zipFileName = `converted-images-${Date.now()}.zip`;
         const zipFilePath = path.resolve('uploads', zipFileName);
         const output = fs.createWriteStream(zipFilePath);
@@ -48,6 +51,7 @@ app.post('/upload', upload.array('images', 10), async (req, res) => {
         });
 
         archive.on('error', (err) => {
+            console.error('Erro ao criar o arquivo ZIP:', err);
             throw err;
         });
 
@@ -58,11 +62,12 @@ app.post('/upload', upload.array('images', 10), async (req, res) => {
         });
         await archive.finalize();
     } catch (error) {
+        console.error('Erro durante o processamento:', error);
         res.status(500).send('Erro ao processar as imagens.');
     }
 });
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
     console.log(`Servidor rodando em http://localhost:${PORT}`);
 });
