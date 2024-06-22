@@ -22,8 +22,16 @@
             });
 
             if (response.ok) {
-                const result = await response.json();
-                document.getElementById('message').textContent = 'Imagens convertidas e redimensionadas com sucesso!';
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.style.display = 'none';
+                a.href = url;
+                a.download = 'converted-images.zip';
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+                document.getElementById('message').textContent = 'Imagens convertidas e redimensionadas com sucesso! Download iniciado.';
             } else {
                 document.getElementById('message').textContent = 'Erro ao processar as imagens.';
             }
