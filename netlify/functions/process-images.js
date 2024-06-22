@@ -7,7 +7,10 @@ const archiver = require('archiver');
 const upload = multer({ storage: multer.memoryStorage() });
 
 exports.handler = async (event, context) => {
+    console.log('Received event:', event);
+
     if (event.httpMethod !== 'POST') {
+        console.log('Invalid HTTP method');
         return {
             statusCode: 405,
             body: 'Method Not Allowed'
@@ -18,6 +21,7 @@ exports.handler = async (event, context) => {
         const form = new formidable.IncomingForm();
         form.parse(event, async (err, fields, files) => {
             if (err) {
+                console.log('Error parsing the files:', err);
                 return {
                     statusCode: 500,
                     body: 'Error parsing the files'
@@ -44,6 +48,7 @@ exports.handler = async (event, context) => {
             output.on('close', () => {
                 fs.readFile(zipFilePath, (err, data) => {
                     if (err) {
+                        console.log('Error reading the ZIP file:', err);
                         return {
                             statusCode: 500,
                             body: 'Error creating the ZIP file'
@@ -62,6 +67,7 @@ exports.handler = async (event, context) => {
             });
 
             archive.on('error', (err) => {
+                console.log('Error creating the archive:', err);
                 throw err;
             });
 
@@ -72,6 +78,7 @@ exports.handler = async (event, context) => {
             await archive.finalize();
         });
     } catch (error) {
+        console.log('Error processing the images:', error);
         return {
             statusCode: 500,
             body: 'Error processing the images'
