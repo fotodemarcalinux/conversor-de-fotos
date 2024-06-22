@@ -5,11 +5,6 @@
   functions = "netlify/functions"
 
 [[redirects]]
-  from = "/.netlify/functions/*"
+  from = "/functions/*"
   to = "/.netlify/functions/:splat"
   status = 200
-
-[[headers]]
-  for = "/*.html"
-  [headers.values]
-    Content-Type = "text/html; charset=utf-8"
