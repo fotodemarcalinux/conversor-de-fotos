@@ -1,10 +1,7 @@
 [build]
-  command = "npm install"
+  command = "nvm install 18 && nvm use 18 && npm install && npm run build"
   publish = "public"
-  environment = { NODE_VERSION = "14.17.0" }
-
-[functions]
-  directory = "netlify/functions"
+  functions = "netlify/functions"
 
 [[redirects]]
   from = "/*"

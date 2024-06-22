@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "description": "",
   "main": "server.js",
-  "scripts": {
-    "start": "node server.js",
-    "build": "echo 'Skipping build step, just running start script'"
-  },
+ "scripts": {
+  "start": "node server.js",
+  "build": "echo 'Skipping build step, just running start script'"
+},
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -19,6 +19,6 @@
     "sharp": "^0.33.4"
   },
   "engines": {
-    "node": "14.x"
-  }
+  "node": ">=18.17.0"
+}
 }

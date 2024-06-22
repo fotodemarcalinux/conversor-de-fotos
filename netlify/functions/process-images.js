@@ -1,88 +1,60 @@
-const Busboy = require('busboy');
+const express = require('express');
+const multer = require('multer');
 const sharp = require('sharp');
-const { createWriteStream, readFileSync } = require('fs');
-const { join } = require('path');
+const fs = require('fs');
+const path = require('path');
 const archiver = require('archiver');
 
-exports.handler = async (event) => {
-    if (event.httpMethod !== 'POST') {
-        return {
-            statusCode: 405,
-            body: 'Method Not Allowed',
-        };
-    }
+const app = express();
+const upload = multer({ storage: multer.memoryStorage() });
 
-    return new Promise((resolve, reject) => {
-        const busboy = new Busboy({ headers: event.headers });
-        const files = [];
+app.use(express.static('public'));
 
-        busboy.on('file', (fieldname, file, filename) => {
-            const buffer = [];
-            file.on('data', (data) => buffer.push(data));
-            file.on('end', async () => {
-                try {
-                    const fileBuffer = Buffer.concat(buffer);
-                    const outputFilename = `${filename.split('.')[0]}-resized.jpeg`;
-                    const outputFilePath = join('/tmp', outputFilename);
+app.post('/upload', upload.array('images', 10), async (req, res) => {
+    try {
+        const outputFilenames = await Promise.all(req.files.map(async (file) => {
+            const outputFilename = `${file.originalname.split('.')[0]}-resized.jpeg`;
+            const outputFilePath = path.resolve('uploads/resized', outputFilename);
 
-                    await sharp(fileBuffer)
-                        .resize(1984, 1100)
-                        .jpeg({ quality: 90 })
-                        .toFile(outputFilePath);
+            await sharp(file.buffer)
+                .resize(1984, 1100)
+                .jpeg({ quality: 90 })
+                .toFile(outputFilePath);
 
-                    files.push(outputFilePath);
-                } catch (error) {
-                    console.error('Error processing file:', error);
-                    reject({
-                        statusCode: 500,
-                        body: 'Error processing images',
-                    });
+            return outputFilePath;
+        }));
+
+        const zipFileName = `converted-images-${Date.now()}.zip`;
+        const zipFilePath = path.resolve('uploads', zipFileName);
+        const output = fs.createWriteStream(zipFilePath);
+        const archive = archiver('zip', { zlib: { level: 9 } });
+
+        output.on('close', () => {
+            res.download(zipFilePath, (err) => {
+                if (err) {
+                    console.error('Erro ao enviar o arquivo:', err);
                 }
+                fs.unlinkSync(zipFilePath);
             });
         });
 
-        busboy.on('finish', async () => {
-            if (files.length === 0) {
-                resolve({
-                    statusCode: 400,
-                    body: 'No files uploaded',
-                });
-                return;
-            }
-
-            const zipFileName = `converted-images-${Date.now()}.zip`;
-            const zipFilePath = join('/tmp', zipFileName);
-            const output = createWriteStream(zipFilePath);
-            const archive = archiver('zip', { zlib: { level: 9 } });
-
-            output.on('close', () => {
-                resolve({
-                    statusCode: 200,
-                    headers: {
-                        'Content-Type': 'application/zip',
-                        'Content-Disposition': `attachment; filename="${zipFileName}"`,
-                    },
-                    body: readFileSync(zipFilePath).toString('base64'),
-                    isBase64Encoded: true,
-                });
-            });
-
-            archive.on('error', (err) => {
-                console.error('Error creating ZIP file:', err);
-                reject({
-                    statusCode: 500,
-                    body: 'Error creating ZIP file',
-                });
-            });
-
-            archive.pipe(output);
-            files.forEach((filePath) => {
-                archive.file(filePath, { name: path.basename(filePath) });
-            });
-            await archive.finalize();
+        archive.on('error', (err) => {
+            console.error('Erro ao criar o arquivo ZIP:', err);
+            throw err;
         });
 
-        busboy.write(event.body, event.isBase64Encoded ? 'base64' : 'binary');
-        busboy.end();
-    });
-};
+        archive.pipe(output);
+        outputFilenames.forEach((filePath) => {
+            archive.file(filePath, { name: path.basename(filePath) });
+        });
+        await archive.finalize();
+    } catch (error) {
+        console.error('Erro durante o processamento:', error);
+        res.status(500).send('Erro ao processar as imagens.');
+    }
+});
+
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+    console.log(`Servidor rodando em http://localhost:${PORT}`);
+});
