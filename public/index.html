@@ -7,7 +7,7 @@
 </head>
 <body>
     <h1>Conversor de Fotos</h1>
-    <form id="upload-form" action="/functions/process-images" method="post" enctype="multipart/form-data">
+    <form id="upload-form" action="/.netlify/functions/process-images" method="post" enctype="multipart/form-data">
         <input type="file" name="images" multiple required>
         <button type="submit">Enviar</button>
     </form>
@@ -16,22 +16,14 @@
         document.getElementById('upload-form').addEventListener('submit', async function(event) {
             event.preventDefault();
             const formData = new FormData(this);
-            const response = await fetch('/functions/process-images', {
+            const response = await fetch('/.netlify/functions/process-images', {
                 method: 'POST',
                 body: formData
             });
 
             if (response.ok) {
-                const blob = await response.blob();
-                const url = window.URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.style.display = 'none';
-                a.href = url;
-                a.download = 'converted-images.zip';
-                document.body.appendChild(a);
-                a.click();
-                window.URL.revokeObjectURL(url);
-                document.getElementById('message').textContent = 'Imagens convertidas e redimensionadas com sucesso! Download iniciado.';
+                const result = await response.json();
+                document.getElementById('message').textContent = 'Imagens convertidas e redimensionadas com sucesso!';
             } else {
                 document.getElementById('message').textContent = 'Erro ao processar as imagens.';
             }

@@ -1,87 +1,53 @@
-const multer = require('multer');
-const sharp = require('sharp');
-const fs = require('fs');
-const path = require('path');
-const archiver = require('archiver');
-const formidable = require('formidable');
+const busboy = require('busboy');
+const { Handler } = require('@netlify/functions');
 
-exports.handler = async (event, context) => {
-    console.log('Received event:', JSON.stringify(event));
+const handler = async (event) => {
+  return new Promise((resolve, reject) => {
+    const bb = busboy({ headers: event.headers });
+    const fields = {};
+    const files = [];
 
-    if (event.httpMethod !== 'POST') {
-        console.log('Invalid HTTP method');
-        return {
-            statusCode: 405,
-            body: 'Method Not Allowed'
-        };
-    }
+    bb.on('file', (name, file, info) => {
+      const { filename, encoding, mimeType } = info;
+      let fileData = [];
 
-    try {
-        const form = new formidable.IncomingForm();
-        form.parse(event, async (err, fields, files) => {
-            if (err) {
-                console.log('Error parsing the files:', err);
-                return {
-                    statusCode: 500,
-                    body: 'Error parsing the files'
-                };
-            }
+      file.on('data', (data) => {
+        fileData.push(data);
+      });
 
-            console.log('Files received:', files);
-
-            const outputFilenames = await Promise.all(Object.values(files).map(async (file) => {
-                const outputFilename = `${file.originalFilename.split('.')[0]}-resized.jpeg`;
-                const outputFilePath = path.resolve('/tmp', outputFilename);
-
-                console.log('Processing file:', file.filepath);
-                await sharp(file.filepath)
-                    .resize(1984, 1100)
-                    .jpeg({ quality: 90 })
-                    .toFile(outputFilePath);
-
-                console.log('Processed file saved to:', outputFilePath);
-                return outputFilePath;
-            }));
-
-            console.log('All files processed. Creating ZIP archive.');
-
-            const zipFileName = `converted-images-${Date.now()}.zip`;
-            const zipFilePath = path.resolve('/tmp', zipFileName);
-            const output = fs.createWriteStream(zipFilePath);
-            const archive = archiver('zip', { zlib: { level: 9 } });
-
-            output.on('close', async () => {
-                console.log('ZIP archive created at:', zipFilePath);
-                const data = await fs.promises.readFile(zipFilePath);
-                return {
-                    statusCode: 200,
-                    headers: {
-                        'Content-Type': 'application/zip',
-                        'Content-Disposition': `attachment; filename=${zipFileName}`
-                    },
-                    body: data.toString('base64'),
-                    isBase64Encoded: true
-                };
-            });
-
-            archive.on('error', (err) => {
-                console.log('Error creating the archive:', err);
-                throw err;
-            });
-
-            archive.pipe(output);
-            outputFilenames.forEach((filePath) => {
-                archive.file(filePath, { name: path.basename(filePath) });
-            });
-            await archive.finalize();
-
-            console.log('ZIP archive creation initiated.');
+      file.on('end', () => {
+        files.push({
+          fieldname: name,
+          originalname: filename,
+          encoding: encoding,
+          mimetype: mimeType,
+          buffer: Buffer.concat(fileData),
         });
-    } catch (error) {
-        console.log('Error processing the images:', error);
-        return {
-            statusCode: 500,
-            body: 'Error processing the images'
-        };
-    }
+      });
+    });
+
+    bb.on('field', (name, val) => {
+      fields[name] = val;
+    });
+
+    bb.on('close', () => {
+      // Aqui você pode processar os arquivos e campos conforme necessário
+      console.log('Upload terminado:', { fields, files });
+      resolve({
+        statusCode: 200,
+        body: JSON.stringify({ message: 'Upload bem-sucedido!', fields, files }),
+      });
+    });
+
+    bb.on('error', (err) => {
+      reject({
+        statusCode: 500,
+        body: JSON.stringify({ error: err.message }),
+      });
+    });
+
+    bb.end(Buffer.from(event.body, 'base64'));
+  });
 };
+
+module.exports = { handler };
