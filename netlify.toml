@@ -1,6 +1,10 @@
 [build]
   command = "npm install && npm run build"
   publish = "public"
+  environment = { NODE_VERSION = "14.x" }
+
+[functions]
+  directory = "netlify/functions"
 
 [[redirects]]
   from = "/*"

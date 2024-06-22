@@ -77,7 +77,7 @@ exports.handler = async (event) => {
 
             archive.pipe(output);
             files.forEach((filePath) => {
-                archive.file(filePath, { name: filePath.split('/').pop() });
+                archive.file(filePath, { name: path.basename(filePath) });
             });
             await archive.finalize();
         });
