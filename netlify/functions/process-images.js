@@ -45,6 +45,7 @@ exports.handler = async (event) => {
           // Clean up temporary files
           outputFilenames.forEach((filePath) => fs.unlinkSync(filePath));
           fs.unlinkSync(zipFilePath);
+
           resolve({
             statusCode: 200,
             headers: {
