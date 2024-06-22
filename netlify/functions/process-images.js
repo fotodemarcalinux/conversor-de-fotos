@@ -3,8 +3,7 @@ const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
-
-const upload = multer({ storage: multer.memoryStorage() });
+const formidable = require('formidable');
 
 exports.handler = async (event, context) => {
     console.log('Received event:', JSON.stringify(event));
@@ -31,11 +30,11 @@ exports.handler = async (event, context) => {
             console.log('Files received:', files);
 
             const outputFilenames = await Promise.all(Object.values(files).map(async (file) => {
-                const outputFilename = `${file.originalname.split('.')[0]}-resized.jpeg`;
+                const outputFilename = `${file.originalFilename.split('.')[0]}-resized.jpeg`;
                 const outputFilePath = path.resolve('/tmp', outputFilename);
 
-                console.log('Processing file:', file.path);
-                await sharp(file.path)
+                console.log('Processing file:', file.filepath);
+                await sharp(file.filepath)
                     .resize(1984, 1100)
                     .jpeg({ quality: 90 })
                     .toFile(outputFilePath);
