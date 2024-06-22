@@ -3,7 +3,6 @@ const sharp = require('sharp');
 const fs = require('fs');
 const path = require('path');
 const archiver = require('archiver');
-const { Handler } = require('@netlify/functions');
 
 exports.handler = async (event) => {
   return new Promise((resolve, reject) => {
