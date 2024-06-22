@@ -42,6 +42,9 @@ exports.handler = async (event) => {
 
         output.on('close', async () => {
           const data = await fs.promises.readFile(zipFilePath);
+          // Clean up temporary files
+          outputFilenames.forEach((filePath) => fs.unlinkSync(filePath));
+          fs.unlinkSync(zipFilePath);
           resolve({
             statusCode: 200,
             headers: {
