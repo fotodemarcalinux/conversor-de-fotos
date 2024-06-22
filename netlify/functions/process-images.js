@@ -50,25 +50,18 @@ exports.handler = async (event, context) => {
             const output = fs.createWriteStream(zipFilePath);
             const archive = archiver('zip', { zlib: { level: 9 } });
 
-            output.on('close', () => {
-                fs.readFile(zipFilePath, (err, data) => {
-                    if (err) {
-                        console.log('Error reading the ZIP file:', err);
-                        return {
-                            statusCode: 500,
-                            body: 'Error creating the ZIP file'
-                        };
-                    }
-                    return {
-                        statusCode: 200,
-                        headers: {
-                            'Content-Type': 'application/zip',
-                            'Content-Disposition': `attachment; filename=${zipFileName}`
-                        },
-                        body: data.toString('base64'),
-                        isBase64Encoded: true
-                    };
-                });
+            output.on('close', async () => {
+                console.log('ZIP archive created at:', zipFilePath);
+                const data = await fs.promises.readFile(zipFilePath);
+                return {
+                    statusCode: 200,
+                    headers: {
+                        'Content-Type': 'application/zip',
+                        'Content-Disposition': `attachment; filename=${zipFileName}`
+                    },
+                    body: data.toString('base64'),
+                    isBase64Encoded: true
+                };
             });
 
             archive.on('error', (err) => {
@@ -82,7 +75,7 @@ exports.handler = async (event, context) => {
             });
             await archive.finalize();
 
-            console.log('ZIP archive created successfully.');
+            console.log('ZIP archive creation initiated.');
         });
     } catch (error) {
         console.log('Error processing the images:', error);
