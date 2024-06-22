@@ -7,7 +7,7 @@ const archiver = require('archiver');
 const upload = multer({ storage: multer.memoryStorage() });
 
 exports.handler = async (event, context) => {
-    console.log('Received event:', event);
+    console.log('Received event:', JSON.stringify(event));
 
     if (event.httpMethod !== 'POST') {
         console.log('Invalid HTTP method');
@@ -28,17 +28,23 @@ exports.handler = async (event, context) => {
                 };
             }
 
+            console.log('Files received:', files);
+
             const outputFilenames = await Promise.all(Object.values(files).map(async (file) => {
                 const outputFilename = `${file.originalname.split('.')[0]}-resized.jpeg`;
                 const outputFilePath = path.resolve('/tmp', outputFilename);
 
+                console.log('Processing file:', file.path);
                 await sharp(file.path)
                     .resize(1984, 1100)
                     .jpeg({ quality: 90 })
                     .toFile(outputFilePath);
 
+                console.log('Processed file saved to:', outputFilePath);
                 return outputFilePath;
             }));
+
+            console.log('All files processed. Creating ZIP archive.');
 
             const zipFileName = `converted-images-${Date.now()}.zip`;
             const zipFilePath = path.resolve('/tmp', zipFileName);
@@ -76,6 +82,8 @@ exports.handler = async (event, context) => {
                 archive.file(filePath, { name: path.basename(filePath) });
             });
             await archive.finalize();
+
+            console.log('ZIP archive created successfully.');
         });
     } catch (error) {
         console.log('Error processing the images:', error);
